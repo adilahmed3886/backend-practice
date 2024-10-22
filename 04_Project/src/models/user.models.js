@@ -1,8 +1,8 @@
-import { model, Schema } from "mongoose";
+import mongoose, { model, Schema } from "mongoose";
 import bcrypt from "bcrypt";
 import jwt from 'jsonwebtoken'
 
-const userSchema = new Schema(
+const userSchema = new mongoose.Schema(
   {
     username: {
       type: String,
@@ -83,4 +83,4 @@ userSchema.methods.generateRefreshToken = async function() {
   )
 }
 
-export const User = model("User", userSchema);
+export const User = mongoose.model("User", userSchema);
