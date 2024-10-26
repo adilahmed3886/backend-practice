@@ -6,16 +6,17 @@ import {uploadToCloudinary} from "../utils/cloudinary.upload.js";
 
 const generateAccessAndRefreshToken = async (id) => {
     try {
-        const user = await User.findById(id)
-        const accessToken = user.generateAccessToken()
-        const refreshToken = user.generateRefreshToken()
-        user.refreshToken = refreshToken
-        await user.save({validateBeforeSave: false})
-        return {accessToken, refreshToken}
+        const user = await User.findById(id);
+        const accessToken = await user.generateAccessToken();
+        const refreshToken = await user.generateRefreshToken();
+
+        user.refreshToken = refreshToken;
+        await user.save({ validateBeforeSave: false });
+        return { accessToken, refreshToken };
     } catch (error) {
-        throw new ApiError(500, "Failed to create tokens")
+        throw new ApiError(500, "Failed to create tokens");
     }
-}
+};
 
 const registerUser = asyncHandler(async (req, res) => {
     //get user info which are needed to make user model
@@ -90,19 +91,23 @@ const loginUser = asyncHandler(async (req, res) => {
     //remove password and refresh token from response user
     //add tokens in cookies as response headers
     //return response
-    const {email, password} = req.body
-    if(!(password && email)){
-        throw new ApiError(400, "email and password both is required")
+    const {email, password, username} = req.body
+    if(!email && !username){
+        throw new ApiError(400, "email or username both is required")
     }
-    const user = await User.findOne({email})
+    const user = await User.findOne({$or: [{username}, {email}]})
     if(!user){
-        throw new ApiError(400, "User does not exist")
+        throw new ApiError(404, "User does not exist")
     }
     const passwordCheck = await user.checkPassword(password)
     if(!passwordCheck){
-        throw new ApiError(400, "Incorrect password")
+        throw new ApiError(401, "Incorrect password")
     }
     const {accessToken, refreshToken} = await generateAccessAndRefreshToken(user._id)
+
+    if (!accessToken || !refreshToken) {
+        throw new ApiError(500, "Token generation failed");
+    }
     const loggedInUser = await User.findById(user._id).select("-password -refreshToken")
     if(!loggedInUser){
         throw new ApiError(500, "Login Failed!")
@@ -125,7 +130,7 @@ const logoutUser = asyncHandler(async (req, res) => {
     const id = req.user._id
     await User.findByIdAndUpdate(id, {$set:{refreshToken: undefined}}, {new: true})
 
-    options = {
+   const options = {
         httpOnly: true,
         secure: true,
     }
