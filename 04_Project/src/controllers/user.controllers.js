@@ -234,7 +234,9 @@ const updateAccountDetails = asyncHandler(async (req, res) => {
 })
 
 const updateAvatar = asyncHandler(async (req, res) => {
-    const avatarPath = req.files?.path
+    const avatarPath = req.file?.path
+
+    //Delete old avatar from cloudinary
 
     if(!avatarPath){
         throw new ApiError(400, "Avatar is required to update")
@@ -291,6 +293,75 @@ const updateCoverImage = asyncHandler(async (req, res) => {
         .json(new ApiResponse(200, user, "Cover image updated successfully"))
 })
 
+const getUserChannelProfile = asyncHandler(async (req, res) => {
+    const {username} = req.params
+    if(!username?.trim()){
+        throw new ApiError(400, "username is required to query channel profile")
+    }
+
+    // can do db quer of find first
+
+    const channel = await User.aggregate([
+        {
+            $match: {
+                username: username?.toLowerCase()
+            }
+        },
+        {
+            $lookup: {
+                from: "subscriptions",
+                localField: "_id",
+                foreignField: "subscribedTo",
+                as: "subscribers"
+            }
+        },
+        {
+            $lookup: {
+                from: "subscriptions",
+                localField: "_id",
+                foreignField: "subscriber",
+                as: "subscribedTo"
+            }
+        },
+        {
+            $addFields: {
+                subscribersCount: {$size: "$subscribers"},
+                subscribedToCount: {$size: "$subscribedTo"},
+                isSubscribed: {
+                    $cond: {
+                        if: {
+                            $in: [req.user?._id, "$subscribers.subscriber"]
+                        },
+                        then: true,
+                        else: false
+                    }
+                }
+            }
+        },
+        {
+            $project: {
+                fullName: 1,
+                username: 1,
+                subscribersCount: 1,
+                subscribedToCount: 1,
+                isSubscribed: 1,
+                avatar: 1,
+                coverImage: 1,
+                email: 1,
+            }
+        }
+    ])
+
+    //console.log(channel) have to see <--
+    if(!channel?.length){
+        throw new ApiError(404, "Channel not found")
+    }
+
+    return res
+        .status(200)
+        .json(new ApiResponse(200, channel[0], "Channel profile fetched successfully"))
+})
+
 export {
     registerUser,
     loginUser,
@@ -301,6 +372,7 @@ export {
     updateAccountDetails,
     updateAvatar,
     updateCoverImage,
+    getUserChannelProfile,
 }
 
 //async handler is for the whole function while async inside it is for the functions inside it like db query etc
@@ -312,3 +384,18 @@ export {
 //{new: true} is for returning the updated user
 
 //user req.files?.avatar[0]?.path but not the avatar[0] here??
+
+//what basicallyyy is aggregation pipelines
+
+//what is left join
+
+//what are joins in general
+
+//what is the difference between left join and right join
+
+//is it mandatory or a limit to always have 3 phases in pipelines? or three pipielines?
+
+//what are different types of aggregation pipelines? match, lookup etc
+
+// why do we need explicit ? even inside if statements?
+

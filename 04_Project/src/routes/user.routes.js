@@ -17,11 +17,12 @@ router.route("/login").post(loginUser);
 //secured routes:
 router.route("/logout").post(verifyJWT, logoutUser);
 router.route("/refreshTokens").post(accessTokenRefresh)
-router.route("/changePassword").put(verifyJWT, changePassword)
-router.route("/getUser").put(verifyJWT, getCurrentUser)
-router.route("/updateUser").put(verifyJWT, updateAccountDetails)
-router.route("/updateAvatar").put(upload.single("avatar"), verifyJWT, updateAvatar)
-router.route("/updateCoverImage").put(upload.single("coverImage"), verifyJWT, updateCoverImage)
+router.route("/changePassword").post(verifyJWT, changePassword)
+router.route("/getUser").get(verifyJWT, getCurrentUser)
+router.route("/updateUser").patch(verifyJWT, updateAccountDetails)
+
+router.route("/updateAvatar").patch(upload.single("avatar"), verifyJWT, updateAvatar)
+router.route("/updateCoverImage").patch(upload.single("coverImage"), verifyJWT, updateCoverImage)
 
 
 
