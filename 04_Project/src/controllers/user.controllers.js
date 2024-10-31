@@ -173,10 +173,122 @@ const accessTokenRefresh = asyncHandler(async (req, res) => {
             .cookie("accessToken", accessToken, options)
             .cookie("refreshToken", refreshToken, options)
             .json(new ApiResponse(200, {accessToken, refreshToken}, "Access Token Refreshed Successfully"))
-            
+
     } catch (error) {
         throw new ApiError(401, error?.message || "Access Token Refresh Failed")
     }
+})
+
+const changePassword = asyncHandler(async (req, res) => {
+    const {oldPassword, newPassword} = req.body
+    if(!(oldPassword && newPassword)){
+        throw new ApiError(400, "oldPassword and newPassword both are required")
+    }
+
+    const user = await User.findById(req.user._id)
+    const passwordCheck = await user.checkPassword(oldPassword)
+    if(!passwordCheck){
+        throw new ApiError(401, "Incorrect Old Password")
+    }
+
+    user.password = newPassword
+    await user.save({ validateBeforeSave: false })
+    
+    return res
+        .status(200)
+        .json(new ApiResponse(200, {}, "Password changed successfully"))
+})
+
+const getCurrentUser = asyncHandler(async (req, res) => {
+    return res
+        .status(200)
+        .json(new ApiResponse(200, req.user, "User fetched successfully"))
+})
+
+const updateAccountDetails = asyncHandler(async (req, res) => {
+    const {fullName, username, email} = req.body
+
+    if(!(fullName && username && email)){
+        throw new ApiError(400, "fullName, username and email are required")
+    }
+
+    const user = await User.findByIdAndUpdate(
+        req.user?._id,
+        {
+            $set: {
+                fullName,
+                username,
+                email
+            }
+        },
+        {new: true}
+    ).select("-password -refreshToken")
+    if(!user){
+        throw new ApiError(404, "User not found")
+    }
+
+    return res 
+        .status(200)
+        .json(new ApiResponse(200, user, "Account details updated successfully"))
+
+})
+
+const updateAvatar = asyncHandler(async (req, res) => {
+    const avatarPath = req.files?.path
+
+    if(!avatarPath){
+        throw new ApiError(400, "Avatar is required to update")
+    }
+
+    const avatar = await uploadToCloudinary(avatarPath)
+    if(!avatar){
+        throw new ApiError(500, "Unable to upload avatar")
+    }
+
+    const user = await User.findByIdAndUpdate(
+        req.user?._id,
+        {
+            $set: {avatar : avatar.secure_url}
+        },
+        {new: true}
+    ).select("-password -refreshToken")
+    
+    if(!user){
+        throw new ApiError(404, "User not found")
+    }
+
+    return res
+        .status(200)
+        .json(new ApiResponse(200, user, "Avatar updated successfully"))
+})
+
+const updateCoverImage = asyncHandler(async (req, res) => {
+    const coverImagePath = req.files?.path
+
+    if(!coverImagePath){
+        throw new ApiError(400, "Cover image is required to update")
+    }
+
+    const coverImage = await uploadToCloudinary(coverImagePath)
+    if(!coverImage){
+        throw new ApiError(500, "Unable to upload cover image")
+    }
+
+    const user = await User.findByIdAndUpdate(
+        req.user?._id,
+        {
+            $set: {coverImage : coverImage.secure_url}
+        },
+        {new: true}
+    ).select("-password -refreshToken")
+    
+    if(!user){
+        throw new ApiError(404, "User not found")
+    }
+
+    return res
+        .status(200)
+        .json(new ApiResponse(200, user, "Cover image updated successfully"))
 })
 
 export {
@@ -184,4 +296,19 @@ export {
     loginUser,
     logoutUser,
     accessTokenRefresh,
+    changePassword,
+    getCurrentUser,
+    updateAccountDetails,
+    updateAvatar,
+    updateCoverImage,
 }
+
+//async handler is for the whole function while async inside it is for the functions inside it like db query etc
+
+//why did we use try catch block when we have that already in async handler?
+
+//why do we query for uuser details when we already have user in req.user??
+
+//{new: true} is for returning the updated user
+
+//user req.files?.avatar[0]?.path but not the avatar[0] here??
