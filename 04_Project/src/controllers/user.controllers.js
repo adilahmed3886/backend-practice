@@ -4,6 +4,7 @@ import {ApiResponse} from "../utils/ApiResponse.js";
 import { ApiError } from "../utils/ApiError.js";
 import {uploadToCloudinary} from "../utils/cloudinary.upload.js";
 import jwt from "jsonwebtoken";
+import mongoose from "mongoose";
 
 const generateAccessAndRefreshToken = async (id) => {
     try {
@@ -129,7 +130,7 @@ const loginUser = asyncHandler(async (req, res) => {
 
 const logoutUser = asyncHandler(async (req, res) => {
     const id = req.user._id
-    await User.findByIdAndUpdate(id, {$set:{refreshToken: undefined}}, {new: true})
+    await User.findByIdAndUpdate(id, {$unset:{refreshToken: 1}}, {new: true})
 
    const options = {
         httpOnly: true,
@@ -362,6 +363,52 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
         .json(new ApiResponse(200, channel[0], "Channel profile fetched successfully"))
 })
 
+const getWatchHistory = asyncHandler(async (req, res) => {
+    const user = await User.aggregate([
+        {
+            $match: {
+                _id: new mongoose.Types.ObjectId(req.user?._id)
+            }
+        },
+        {
+            $lookup: {
+                from: "videos",
+                localField: "watchHistory",
+                foreignField: "_id",
+                as: "watchHistory",
+                pipeline: [
+                    {
+                        $lookup: {
+                            from: "users",
+                            localField: "owner",
+                            foreignField: "_id",
+                            as: "owner",
+                            pipeline: [
+                                {
+                                    $project: {
+                                        fullName: 1,
+                                        username: 1,
+                                        avatar: 1
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    {
+                       $addFields: {
+                           owner: {$arrayElemAt: ["$owner", 0]}
+                       } 
+                    }
+                ]
+            }
+        },
+    ])
+
+    return res
+        .status(200)
+        .json(new ApiResponse(200, user[0].watchHistory, "Watch history fetched successfully"))
+})
+
 export {
     registerUser,
     loginUser,
@@ -373,29 +420,5 @@ export {
     updateAvatar,
     updateCoverImage,
     getUserChannelProfile,
+    getWatchHistory
 }
-
-//async handler is for the whole function while async inside it is for the functions inside it like db query etc
-
-//why did we use try catch block when we have that already in async handler?
-
-//why do we query for uuser details when we already have user in req.user??
-
-//{new: true} is for returning the updated user
-
-//user req.files?.avatar[0]?.path but not the avatar[0] here??
-
-//what basicallyyy is aggregation pipelines
-
-//what is left join
-
-//what are joins in general
-
-//what is the difference between left join and right join
-
-//is it mandatory or a limit to always have 3 phases in pipelines? or three pipielines?
-
-//what are different types of aggregation pipelines? match, lookup etc
-
-// why do we need explicit ? even inside if statements?
-
