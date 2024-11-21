@@ -67,8 +67,14 @@ const registerUser = asyncHandler(async (req, res) => {
         fullName,
         email,
         password,
-        avatar: avatar.secure_url,
-        coverImage: coverImage?.secure_url || "",
+        avatar: {
+            url: avatar.secure_url,
+            public_id: avatar.public_id
+        },
+        coverImage: {
+            public_id: coverImage?.public_id || "",
+            url: coverImage?.secure_url || ""
+        },
     })
 
     const createdUser = await User.findById(newUser._id).select("-password -refreshToken")
@@ -118,6 +124,7 @@ const loginUser = asyncHandler(async (req, res) => {
     const options = {
         httpOnly: true,
         secure: true,
+        sameSite: "None"
     }
 
     return res
@@ -129,12 +136,18 @@ const loginUser = asyncHandler(async (req, res) => {
 })
 
 const logoutUser = asyncHandler(async (req, res) => {
-    const id = req.user._id
-    await User.findByIdAndUpdate(id, {$unset:{refreshToken: 1}}, {new: true})
+    await User.findByIdAndUpdate(
+        req.user._id,
+        {
+            $unset:{refreshToken: 1}
+        },
+        {new: true}
+    )
 
    const options = {
         httpOnly: true,
         secure: true,
+        sameSite: "None"
     }
 
     return res
@@ -167,6 +180,7 @@ const accessTokenRefresh = asyncHandler(async (req, res) => {
         const options = {
             httpOnly: true,
             secure: true,
+            sameSite: "None"
         }
     
         return res
@@ -186,7 +200,7 @@ const changePassword = asyncHandler(async (req, res) => {
         throw new ApiError(400, "oldPassword and newPassword both are required")
     }
 
-    const user = await User.findById(req.user._id)
+    const user = await User.findById(req.user?._id)
     const passwordCheck = await user.checkPassword(oldPassword)
     if(!passwordCheck){
         throw new ApiError(401, "Incorrect Old Password")

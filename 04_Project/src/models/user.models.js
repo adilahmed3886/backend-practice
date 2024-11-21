@@ -30,11 +30,17 @@ const userSchema = new mongoose.Schema(
       required: [true, "Please enter a password"],
     },
     avatar: {
-      type: String, //cloudinary
+      type: {
+        public_id: String,
+        url: String,
+      },
       required: true,
     },
     coverImage: {
-      type: String,
+      type: {
+        public_id: String,
+        url: String,
+      },
     },
     refreshToken: {
       type: String,

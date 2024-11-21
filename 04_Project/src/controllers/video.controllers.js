@@ -14,7 +14,7 @@ const publishVideo = asyncHandler(async(req, res) => {
 
     const user = await User.findById(req.user._id)
     if(!user){
-        throw new ApiError(400, "You have to be a user to publish video")
+        throw new ApiError(400, "You have to be loggedIn to publish video")
     }
 
     const videoPath = req.files?.videoFile[0]?.path
@@ -25,7 +25,6 @@ const publishVideo = asyncHandler(async(req, res) => {
     if(!uploadedVideo && !uploadedThumbnail){
         throw new ApiError(500, "Failed to upload files to cloudinary")
     }
-    console.log(uploadedVideo)
 
     const video = await Video.create({
         title,
@@ -49,7 +48,21 @@ const publishVideo = asyncHandler(async(req, res) => {
 
 })
 
-const updateVideo = asyncHandler(async(req, res) => {})
+// const getVideoById = asyncHandler(async(req, res) => {
+//     const {videoId} = req.params;
+//     if(!isValidObjectId(videoId)){
+//         throw new ApiError(400, "Provide a valid video id")
+//     }
+
+//     const video = await Video.findById(videoId);
+//     if(!video){
+//         throw new ApiError(404, "Video not found")
+//     }
+    
+//     return res
+//         .status(200)
+//         .json(new ApiResponse(200, video, "Successfully fetched video"))
+// })
 
 const deleteVideo = asyncHandler(async(req, res) => {
     const {videoId} = req.params;
@@ -77,9 +90,36 @@ const deleteVideo = asyncHandler(async(req, res) => {
         .json(new ApiResponse(200, {}, "Video deleted successfully"))
 })
 
-const getVideoById = asyncHandler(async(req, res) => {})
+const togglePublishStatus = asyncHandler(async(req, res) => {
+    const {videoId} = req.params;
+    if(!isValidObjectId(videoId)){
+        throw new ApiError(400, "Provide a valid video id")
+    }
 
-const togglePublishStatus = asyncHandler(async(req, res) => {})
+    const video = await Video.findById(videoId);
+    if(!video){
+        throw new ApiError(404, "Video not found")
+    }
+
+    if(video?.owner.toString() !== req.user?._id?.toString()){
+        throw new ApiError(400, "Only owner can toggle their video")
+    }
+
+    video.isPublished = !video.isPublished;
+    const updatedVideo = await video.save({validateBeforeSave: false});
+
+    if(!updatedVideo){
+        throw new ApiError(500, "Failed to update video")
+    }
+
+    return res
+        .status(200)
+        .json(new ApiResponse(200, updatedVideo, "Video updated successfully"))
+})
+
+const updateVideo = asyncHandler(async(req, res) => {
+    
+})
 
 const getAllVideos = asyncHandler(async (req, res) => {})
 
